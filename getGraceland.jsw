@@ -1,0 +1,93 @@
+// Author: Josh Obersteadt
+// Date: 6/23/2023
+// About: This program collects calendar events from ecalendars published on Graceland.edu and GuJAckets.com. The calendars are updated via ecalendars and pulled from the Google Calendar user CalandarGu@gmail.com.
+
+import { fetch } from 'wix-fetch';
+import { StoreinDatabase } from 'backend/Update';
+import wixSecretsBackend from 'wix-secrets-backend';
+
+/**
+ * Retrieves calendar events from Google Calendar APIs.
+ * @returns {Array} An array of calendar events.
+ */
+export async function getGoogleEvents() {
+  const today = new Date();
+  
+  try {
+    // Retrieve necessary secrets from Wix Secrets Backend
+    const refresh_token = await wixSecretsBackend.getSecret("RefreshKey");
+    const client_id = await wixSecretsBackend.getSecret("GoogleID");
+    const client_secret = await wixSecretsBackend.getSecret("ClientSecret");
+    const refresh_url = "https://www.googleapis.com/oauth2/v4/token";
+    
+    // Prepare the request body for token refresh
+    const post_body = `grant_type=refresh_token&client_id=${encodeURIComponent(client_id)}&client_secret=${encodeURIComponent(client_secret)}&refresh_token=${encodeURIComponent(refresh_token)}`;
+    
+    const refresh_request = {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: post_body,
+    };
+    
+    // Refresh the access token
+    const refresh_response = await fetch(refresh_url, refresh_request);
+    const response_json = await refresh_response.json();
+    
+    const apiUrl1 = `https://www.googleapis.com/calendar/v3/calendars/hm07s4q7b4sph4j6gqsdhp37qbk2cq73@import.calendar.google.com/events`;
+    const apiUrl2 = `https://www.googleapis.com/calendar/v3/calendars/kig2273vf3f294vbl8nip3r9v145bo5q@import.calendar.google.com/events`;
+    
+    const headers = {
+      Authorization: `Bearer ${response_json.access_token}`,
+    };
+    
+    // Fetch events from Google Calendar APIs
+    const [response1, response2] = await Promise.all([
+      fetch(apiUrl1, { headers }),
+      fetch(apiUrl2, { headers }),
+    ]);
+    
+    const [data1, data2] = await Promise.all([
+      response1.json(),
+      response2.json(),
+    ]);
+    
+    const events1 = data1.items;
+    const events2 = data2.items;
+    
+    // Combine events from both calendars
+    const events = [...events1, ...events2];
+    
+    for (const event of events) {
+      const tags = event.organizer.email.includes("hm07s4q7b4sph4j6gqsdhp37qbk2cq73") ? "Academic" : "Jackets";
+      
+      const newEvent = {
+        title: event.summary,
+        startDate: new Date(event.start.date),
+        location: event.location,
+        description: event.description,
+        endDate: new Date(event.end.date),
+        link: "https://www.graceland.edu/event/" + event.summary.replace(/ /g, "-"),
+        tag: tags
+      };
+      
+      // Set image link based on the event's tag
+      if (newEvent.tag === "Academic") {
+        newEvent.imageLink = "https://static.wixstatic.com/media/f31894_cb9bc732e1204dcbb11ccce7f953f90d~mv2.jpg";
+      } else {
+        newEvent.imageLink = "https://static.wixstatic.com/media/f31894_f91bfb87a14544c082a4d747e33f7ba2~mv2.png";
+      }
+      
+      if (newEvent.startDate > today) {
+        // Store the event in the database
+        StoreinDatabase(newEvent);
+      }
+    }
+    
+    return events;
+  } catch (error) {
+    console.error("Error retrieving events:", error);
+    throw error;
+  }
+}
