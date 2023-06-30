@@ -1,0 +1,144 @@
+import wixData from 'wix-data';
+
+
+export async function updateCollectionItems() {
+  const today = new Date();
+
+  return new Promise((resolve, reject) => {
+    wixData.query('Events')
+      .limit(1000)
+      .find()
+      .then(results => {
+        const itemsToDelete = [];
+
+        // Check each item in the collection
+        results.items.forEach(item => {
+          const endDate = item.endDate;
+
+          // Compare the end date with today's date
+          if (endDate < today || isNaN(endDate)) {
+            itemsToDelete.push(item._id);
+          }
+        });
+
+        // Delete the items from the collection
+        if (itemsToDelete.length > 0) {
+          wixData.bulkRemove('Events', itemsToDelete)
+            .then(() => {
+              console.log('Items deleted successfully');
+              resolve(itemsToDelete.length); // Resolve with the number of deleted items
+            })
+            .catch(err => {
+              console.error('Error deleting items:', err);
+              reject(err);
+            });
+        } else {
+          console.log('No items to delete');
+          resolve(0); // Resolve with 0 when no items are deleted
+        }
+      })
+      .catch(err => {
+        console.error('Error fetching collection data:', err);
+        reject(err);
+      });
+  });
+}
+
+export function StoreinDatabase(event) {
+    wixData.query("Events").eq("title", event.title).find()
+        .then((results) => {
+            if (results.items.length > 0) {
+                let old = results.items[0]
+
+                let updateditem = Object.assign({}, old, event)
+                
+                wixData.update("Events", updateditem)
+                    .then(() => {
+                        console.log("Record updated successfully");
+                    })
+                    .catch((error) => {
+                        console.log("Failed to update record:", error);
+                    });
+
+            } else {
+                wixData.insert("Events", event)
+                    .then((result) => {
+                        console.log("Event added:", result);
+                    })
+                    .catch((error) => {
+                        console.log("Failed to add event:", error);
+                    });
+            }
+        })
+        .catch((err) => {
+            console.log(err);
+        });
+
+}
+export function StoreinOrganizations(organization) {
+    wixData.query("PresenceOrganizations").eq("title", organization.title).find()
+        .then((results) => {
+            if (results.items.length > 0) {
+                let old = results.items[0]
+
+                let updateditem = Object.assign({}, old, organization)
+                console.log(updateditem);
+                wixData.update("PresenceOrganizations", updateditem)
+                    .then(() => {
+                        console.log("Record updated successfully");
+                    })
+                    .catch((error) => {
+                        console.log("Failed to update record:", error);
+                    });
+
+            } else {
+                wixData.insert("PresenceOrganizations", organization)
+                    .then((result) => {
+                        console.log("Event added:", result);
+                    })
+                    .catch((error) => {
+                        console.log("Failed to add event:", error);
+                    });
+            }
+        })
+        .catch((err) => {
+            console.log(err);
+        });
+
+}
+export function CleanUp() {
+    const today = new Date();
+    today.setHours(today.getHours() - 1);
+
+    wixData.query('Events')
+        .find()
+        .then(results => {
+            const itemsToDelete = [];
+
+            // Check each item in the collection
+            results.items.forEach(item => {
+                const updated = item._updatedDate;
+
+                // Compare the end date with today's date
+                if (updated && updated < today) {
+                    itemsToDelete.push(item._id);
+                }
+            });
+
+            // Delete the items from the collection
+            if (itemsToDelete.length > 0) {
+                wixData.bulkRemove('Events', itemsToDelete)
+                    .then(() => {
+                        console.log('Items deleted successfully');
+                    })
+                    .catch(err => {
+                        console.error('Error deleting items:', err);
+                    });
+            } else {
+                console.log('No items to delete');
+            }
+        })
+        .catch(err => {
+            console.error('Error fetching collection data:', err);
+        });
+}
