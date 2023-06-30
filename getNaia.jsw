@@ -1,0 +1,92 @@
+import { fetch } from 'wix-fetch';
+import wixData from 'wix-data';
+import { StoreinDatabase } from 'backend/Update';
+export function getSports() {
+    const url = "https://naiastats.prestosports.com/composite?print=rss";
+    let i = 0
+    let list = []
+    let clean = []
+    let today = new Date();
+    return fetch(url)
+        .then(response => response.text())
+        .then(data => {
+
+            let news = data.split("<item>");
+            for (i = 0; i < news.length; i++) {
+                list.push(sport(news[i].split("<")))
+            }
+
+            (list.filter(Boolean)).forEach(element => {
+                
+                    clean.push(element)
+                
+            });
+            clean.forEach(element => {
+                console.log(element);
+                StoreinDatabase(element)
+            });
+            return clean
+        })
+        .catch(error => {
+            console.log(error);
+            throw error;
+        });
+}
+
+export function sport(newselements) {
+    const lists = []; // Create an array of lists
+    const today = new Date()
+    let event = {}
+    newselements.forEach((element) => {
+        switch (true) {
+        case element.startsWith("title"):
+            event.description = element.substring(element.indexOf(">") + 1)
+            break;
+        case element.startsWith("link"):
+            event.link = element.substring(element.indexOf(">") + 1)
+            break;
+        case element.startsWith("description"):
+            event.title = element.substring(element.indexOf(">") + 1)
+
+            break;
+        case element.startsWith("catagory"):
+            event.catagory = element.substring(element.indexOf(">") + 1)
+            break;
+        case element.startsWith("pubdate"):
+            event.pubdate = element.substring(element.indexOf(">") + 1)
+            break;
+        case element.startsWith("guid"):
+            event.guid = element.substring(element.indexOf(">") + 1)
+            break;
+        case element.startsWith("dc:date"):
+            event.startDate = new Date(element.substring(element.indexOf(">") + 1))
+            event.endDate = new Date(element.substring(element.indexOf(">") + 1))
+
+            break;
+
+        case element.startsWith("ps:opponent"):
+            event.location = element.substring(element.indexOf(">") + 1)
+
+            break;
+        default:
+            break;
+        }
+
+    });
+
+    if ((event.title).includes("Graceland")) {
+        if (event.startDate > today) {
+            event.imageLink = "https://static.wixstatic.com/media/f31894_f91bfb87a14544c082a4d747e33f7ba2~mv2.png"
+
+            event.tag = "Sports"
+            console.log(event.startDate);
+            return event
+
+        }
+
+    }
+
+    // lists.forEach(element => {
+    //     StoreinDatabase(element)
+    // });
+}
