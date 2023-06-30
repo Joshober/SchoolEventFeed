@@ -1,0 +1,93 @@
+import { fetch } from 'wix-fetch';
+import { StoreinDatabase } from 'backend/Update';
+import { StoreinOrganizations } from 'backend/Update';
+import wixData from 'wix-data';
+
+/**
+ * Retrieves events from the Presence API and stores them in the database.
+ */
+export function getEvents() {
+  const Today = new Date();
+  var url = "https://api.presence.io/graceland/v1/events";
+
+  fetch(url)
+    .then(function (response) {
+      return response.json();
+    })
+    .then(function (data) {
+      // Handle the response data
+      data.forEach(element => {
+        let toInsert = {
+          "organization": element.organizationName,
+          "title": element.eventName,
+          "contactName": element.contactName,
+          "description": element.description.slice(3, -4),
+          "email": element.contactEmail,
+          "location": element.location,
+          "imageuri": element.photoUri,
+          "startDate": new Date(element.startDateTimeUtc),
+          "endDate": new Date(element.endDateTimeUtc),
+          "StartTime": new Date(element.startDateTimeUtc).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          "tag": element.tags[0],
+          "onPresence": true
+        };
+
+        toInsert.link = "https://graceland.presence.io/event/" + toInsert.title.replace(/\s+/g, "-");
+
+        if (toInsert.startDate >= Today) {
+          fetch("https://api.presence.io/graceland/v1/organizations")
+            .then(function (response) {
+              return response.json();
+            })
+            .then(function (data) {
+              data.forEach(element => {
+                if (element.name == toInsert.organization) {
+                  const imageLink = ('https://graceland-cdn.presence.io/organization-photos/6daa785c-d747-431e-ade3-4149ac459e18/' + element.photoUri)
+                  toInsert.imageLink = imageLink;
+                  console.log(imageLink);
+                }
+              });
+            })
+            .catch(function (error) {
+              console.error("Error fetching data:", error);
+            });
+
+          if (toInsert.startDate > Today) {
+            console.log(toInsert);
+            StoreinDatabase(toInsert);
+          }
+        }
+      });
+    });
+}
+
+/**
+ * Retrieves the photo for a specific event.
+ * @param {Object} event - The event object.
+ */
+export async function GetPhoto(event) {
+  // Implementation for retrieving the photo of the event
+}
+
+/**
+ * Retrieves organizations from the Presence API and stores them in the database.
+ */
+export function GetOrganizations() {
+  fetch("https://api.presence.io/graceland/v1/organizations")
+    .then(function (response) {
+      return response.json();
+    })
+    .then(function (data) {
+      data.forEach(element => {
+        let organization = {
+          "title": element.name,
+          "tags": element.categories,
+          "photo": `https://graceland-cdn.presence.io/organization-photos/6daa785c-d747-431e-ade3-4149ac459e18/${element.photoUri}`
+        };
+        StoreinOrganizations(organization);
+      });
+    })
+    .catch(function (error) {
+      console.error("Error fetching data:", error);
+    });
+}
