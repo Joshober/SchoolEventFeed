@@ -4,4 +4,4 @@ A collection of event information from a multitude of sources that are stored in
 
 
 
-![alt text](https://github.com/Joshober/SchoolEventFeed/blob/main/Feed.jpg)
+![alt text]([https://github.com/Joshober/SchoolEventFeed/blob/main/Feed.jpg](https://github.com/Joshober/SchoolEventFeed/blob/main/GuEvents.jpg?raw=true)https://github.com/Joshober/SchoolEventFeed/blob/main/GuEvents.jpg?raw=true)
